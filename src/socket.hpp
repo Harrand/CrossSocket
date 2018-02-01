@@ -1,14 +1,7 @@
 #ifndef SOCKET_HPP
 #define SOCKET_HPP
-
-#ifdef _WIN32
-    #include <winsock2.h>
-#elif __unix__ || __APPLE__ || __linux__
-    #include <sys/socket.h>
-    #include <unistd.h>
-#else
-    static_assert(false, "Neither POSIX nor WinSock implementations could be identified.");
-#endif
+#include "address.hpp"
+#include <variant>
 
 enum class SocketType : unsigned int
 {
@@ -48,6 +41,8 @@ class Socket
 public:
     Socket(IPVersion ip_version, SocketProtocol protocol);
     ~Socket();
+    bool bind_to(const IPv4Address& ipv4_address) const;
+    bool bind_to(const IPv6Address& ipv6_address) const;
 private:
     IPVersion ip_version;
     SocketProtocol protocol;

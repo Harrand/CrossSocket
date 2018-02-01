@@ -7,8 +7,8 @@ namespace sock
     {
         if constexpr(sock::type == SocketType::WINDOWS)
         {
-            // Using Winsock
-            std::cout << "Initialising CrossSocket via Windows (Winsock)...";
+            // Using WinSock
+            std::cout << "Initialising CrossSocket via Windows (WinSock)...";
             WSADATA api_info;
             if(WSAStartup(MAKEWORD(2, 2), &api_info) != 0)
             {
@@ -65,4 +65,22 @@ Socket::~Socket()
     #else
         close(this->socket_handle);
     #endif
+}
+
+bool Socket::bind_to(const IPv4Address& ip_address) const
+{
+    sockaddr_in api_address = ip_address();
+    if(bind(this->socket_handle, reinterpret_cast<const sockaddr*>(&api_address), sizeof(api_address)) == 0)
+        return true;
+    std::cerr << "WinSock Socket IPv4 bind failed. Error-code: " << WSAGetLastError();
+    return false;
+}
+
+bool Socket::bind_to(const IPv6Address& ip_address) const
+{
+    sockaddr_in6 api_address = ip_address();
+    if(bind(this->socket_handle, reinterpret_cast<const struct sockaddr*>(&api_address), sizeof(api_address)) == 0)
+        return true;
+    std::cerr << "WinSock Socket IPv6 bind failed. Error-code: " << WSAGetLastError();
+    return false;
 }
