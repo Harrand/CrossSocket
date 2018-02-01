@@ -5,6 +5,7 @@
     #include <winsock2.h>
 #elif __unix__ || __APPLE__ || __linux__
     #include <sys/socket.h>
+    #include <unistd.h>
 #else
     static_assert(false, "Neither POSIX nor WinSock implementations could be identified.");
 #endif
@@ -46,6 +47,7 @@ class Socket
 {
 public:
     Socket(IPVersion ip_version, SocketProtocol protocol);
+    ~Socket();
 private:
     IPVersion ip_version;
     SocketProtocol protocol;

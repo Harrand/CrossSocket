@@ -28,7 +28,13 @@ namespace sock
 
     void destroy()
     {
-
+        if constexpr(sock::type == SocketType::WINDOWS)
+        {
+            WSACleanup();
+            std::cout << "WinSock cleanup successful.";
+        }
+        else
+            std::cout << "POSIX cleanup successful.";
     }
 }
 
@@ -41,13 +47,22 @@ Socket::Socket(IPVersion ip_version, SocketProtocol protocol): ip_version(ip_ver
         auto proto = (this->protocol == SocketProtocol::TCP) ? IPPROTO_TCP : IPPROTO_UDP;
         this->socket_handle = socket(ipv, type, proto);
         if(this->socket_handle == INVALID_SOCKET)
-            std::cout << "WinSock creation failed. Error Code: " << WSAGetLastError();
+            std::cout << "WinSock Socket creation failed. Error Code: " << WSAGetLastError();
     }
     else
     {
         protoent* protocol_entry = getprotobyname(this->protocol == SocketProtocol::TCP ? "tcp" : "udp");
         this->socket_handle = socket(ipv, type, protocol_entry->p_proto);
         if(this->socket_handle < 0)
-            std::cout << "POSIX Socket creation failed!";
+            std::cout << "POSIX Socket creation failed. No error-code is available.";
     }
+}
+
+Socket::~Socket()
+{
+    #ifdef _WIN32
+        closesocket(this->socket_handle);
+    #else
+        close(this->socket_handle);
+    #endif
 }
