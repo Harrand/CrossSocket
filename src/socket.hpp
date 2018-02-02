@@ -24,7 +24,7 @@ enum class SocketProtocol : unsigned int
     UDP
 };
 
-namespace sock
+namespace xsock
 {
     constexpr SocketType type =
     #ifdef _WIN32
@@ -62,7 +62,7 @@ private:
     std::vector<std::byte> data_buffer;
     IPVersion ip_version;
     SocketProtocol protocol;
-    sock::Handle socket_handle;
+    xsock::Handle socket_handle;
 };
 
 

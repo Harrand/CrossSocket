@@ -1,11 +1,11 @@
 #include "socket.hpp"
 #include <iostream>
 
-namespace sock
+namespace xsock
 {
     bool initialise()
     {
-        if constexpr(sock::type == SocketType::WINDOWS)
+        if constexpr(xsock::type == SocketType::WINDOWS)
         {
             // Using WinSock
             std::cout << "Initialising CrossSocket via Windows (WinSock)...";
@@ -28,7 +28,7 @@ namespace sock
 
     void destroy()
     {
-        if constexpr(sock::type == SocketType::WINDOWS)
+        if constexpr(xsock::type == SocketType::WINDOWS)
         {
             WSACleanup();
             std::cout << "WinSock cleanup successful.";
@@ -42,7 +42,7 @@ Socket::Socket(IPVersion ip_version, SocketProtocol protocol): bound(false), dat
 {
     auto ipv = (this->ip_version == IPVersion::IPV4) ? AF_INET : AF_INET6;
     auto type = (this->protocol == SocketProtocol::TCP) ? SOCK_STREAM : SOCK_DGRAM;
-    if constexpr(sock::type == SocketType::WINDOWS)
+    if constexpr(xsock::type == SocketType::WINDOWS)
     {
         auto proto = (this->protocol == SocketProtocol::TCP) ? IPPROTO_TCP : IPPROTO_UDP;
         this->socket_handle = socket(ipv, type, proto);
