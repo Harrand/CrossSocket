@@ -40,10 +40,14 @@ class Socket
 {
 public:
     Socket(IPVersion ip_version, SocketProtocol protocol);
+    Socket(const Socket& copy);
+    Socket(Socket&& move) = default;
     ~Socket();
-    bool bind_to(const IPv4Address& ipv4_address) const;
-    bool bind_to(const IPv6Address& ipv6_address) const;
+    bool is_bound() const;
+    bool bind_to(const IPv4Address& ipv4_address);
+    bool bind_to(const IPv6Address& ipv6_address);
 private:
+    bool bound;
     IPVersion ip_version;
     SocketProtocol protocol;
     sock::Handle socket_handle;

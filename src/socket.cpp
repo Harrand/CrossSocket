@@ -38,7 +38,7 @@ namespace sock
     }
 }
 
-Socket::Socket(IPVersion ip_version, SocketProtocol protocol): ip_version(ip_version), protocol(protocol)
+Socket::Socket(IPVersion ip_version, SocketProtocol protocol): bound(false), ip_version(ip_version), protocol(protocol)
 {
     auto ipv = (this->ip_version == IPVersion::IPV4) ? AF_INET : AF_INET6;
     auto type = (this->protocol == SocketProtocol::TCP) ? SOCK_STREAM : SOCK_DGRAM;
@@ -58,6 +58,8 @@ Socket::Socket(IPVersion ip_version, SocketProtocol protocol): ip_version(ip_ver
     }
 }
 
+Socket::Socket(const Socket& copy): Socket(copy.ip_version, copy.protocol) {}
+
 Socket::~Socket()
 {
     #ifdef _WIN32
@@ -67,20 +69,31 @@ Socket::~Socket()
     #endif
 }
 
-bool Socket::bind_to(const IPv4Address& ip_address) const
+bool Socket::is_bound() const
+{
+    return this->bound;
+}
+
+bool Socket::bind_to(const IPv4Address& ip_address)
 {
     sockaddr_in api_address = ip_address();
     if(bind(this->socket_handle, reinterpret_cast<const sockaddr*>(&api_address), sizeof(api_address)) == 0)
+    {
+        this->bound = true;
         return true;
+    }
     std::cerr << "WinSock Socket IPv4 bind failed. Error-code: " << WSAGetLastError();
     return false;
 }
 
-bool Socket::bind_to(const IPv6Address& ip_address) const
+bool Socket::bind_to(const IPv6Address& ip_address)
 {
     sockaddr_in6 api_address = ip_address();
     if(bind(this->socket_handle, reinterpret_cast<const struct sockaddr*>(&api_address), sizeof(api_address)) == 0)
+    {
+        this->bound = true;
         return true;
+    }
     std::cerr << "WinSock Socket IPv6 bind failed. Error-code: " << WSAGetLastError();
     return false;
 }
