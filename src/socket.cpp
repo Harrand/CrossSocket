@@ -38,7 +38,7 @@ namespace sock
     }
 }
 
-Socket::Socket(IPVersion ip_version, SocketProtocol protocol): bound(false), ip_version(ip_version), protocol(protocol)
+Socket::Socket(IPVersion ip_version, SocketProtocol protocol): bound(false), data_buffer({}), ip_version(ip_version), protocol(protocol)
 {
     auto ipv = (this->ip_version == IPVersion::IPV4) ? AF_INET : AF_INET6;
     auto type = (this->protocol == SocketProtocol::TCP) ? SOCK_STREAM : SOCK_DGRAM;
@@ -96,4 +96,23 @@ bool Socket::bind_to(const IPv6Address& ip_address)
     }
     std::cerr << "WinSock Socket IPv6 bind failed. Error-code: " << WSAGetLastError();
     return false;
+}
+
+const std::vector<std::byte>& Socket::get_data() const
+{
+    return this->data_buffer;
+}
+
+std::string Socket::get_data_ascii() const
+{
+    std::string data = "";
+    data.reserve(this->get_data().size());
+    for(const std::byte& byte : this->get_data())
+        data += static_cast<char>(byte);
+    return data;
+}
+
+void Socket::clear_data()
+{
+    this->data_buffer.clear();
 }

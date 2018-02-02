@@ -2,6 +2,9 @@
 #define SOCKET_HPP
 #include "address.hpp"
 #include <variant>
+#include <vector>
+#include <cstddef>
+#include <string>
 
 enum class SocketType : unsigned int
 {
@@ -36,6 +39,11 @@ namespace sock
     void destroy();
 }
 
+/**
+ * Two-way communication link between two programs.
+ * API support consists of WinSock and POSIX Sockets.
+ * IP support consists of IPv4 and IPv6.
+ */
 class Socket
 {
 public:
@@ -46,8 +54,12 @@ public:
     bool is_bound() const;
     bool bind_to(const IPv4Address& ipv4_address);
     bool bind_to(const IPv6Address& ipv6_address);
+    const std::vector<std::byte>& get_data() const;
+    std::string get_data_ascii() const;
+    void clear_data();
 private:
     bool bound;
+    std::vector<std::byte> data_buffer;
     IPVersion ip_version;
     SocketProtocol protocol;
     sock::Handle socket_handle;
