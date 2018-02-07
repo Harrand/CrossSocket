@@ -24,6 +24,13 @@ enum class SocketProtocol : unsigned int
     UDP
 };
 
+enum class SocketRole
+{
+    RECEIVER,
+    LISTENER,
+    INDETERMINATE
+};
+
 namespace xsock
 {
     constexpr SocketType type =
@@ -34,6 +41,8 @@ namespace xsock
         SocketType::POSIX;
         using Handle = int;
     #endif
+    // SOMAXCONN exists in both WinSock and Unix Sockets.
+    constexpr int maximum_length_queue = SOMAXCONN;
 
     bool initialise();
     void destroy();
@@ -47,18 +56,21 @@ namespace xsock
 class Socket
 {
 public:
-    Socket(IPVersion ip_version, SocketProtocol protocol);
+    Socket(IPVersion ip_version, SocketProtocol protocol, SocketRole role = SocketRole::INDETERMINATE);
     Socket(const Socket& copy);
     Socket(Socket&& move) = default;
     ~Socket();
     bool is_bound() const;
+    const SocketRole& get_role() const;
     bool bind_to(const IPv4Address& ipv4_address);
     bool bind_to(const IPv6Address& ipv6_address);
+    void listen_requests(int backlog = xsock::maximum_length_queue);
     const std::vector<std::byte>& get_data() const;
     std::string get_data_ascii() const;
     void clear_data();
 private:
     bool bound;
+    SocketRole role;
     std::vector<std::byte> data_buffer;
     IPVersion ip_version;
     SocketProtocol protocol;

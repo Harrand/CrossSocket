@@ -38,7 +38,7 @@ namespace xsock
     }
 }
 
-Socket::Socket(IPVersion ip_version, SocketProtocol protocol): bound(false), data_buffer({}), ip_version(ip_version), protocol(protocol)
+Socket::Socket(IPVersion ip_version, SocketProtocol protocol, SocketRole role): bound(false), role(role), data_buffer({}), ip_version(ip_version), protocol(protocol)
 {
     auto ipv = (this->ip_version == IPVersion::IPV4) ? AF_INET : AF_INET6;
     auto type = (this->protocol == SocketProtocol::TCP) ? SOCK_STREAM : SOCK_DGRAM;
@@ -58,7 +58,7 @@ Socket::Socket(IPVersion ip_version, SocketProtocol protocol): bound(false), dat
     }
 }
 
-Socket::Socket(const Socket& copy): Socket(copy.ip_version, copy.protocol) {}
+Socket::Socket(const Socket& copy): Socket(copy.ip_version, copy.protocol, copy.role) {}
 
 Socket::~Socket()
 {
@@ -72,6 +72,11 @@ Socket::~Socket()
 bool Socket::is_bound() const
 {
     return this->bound;
+}
+
+const SocketRole& Socket::get_role() const
+{
+    return this->role;
 }
 
 bool Socket::bind_to(const IPv4Address& ip_address)
@@ -96,6 +101,13 @@ bool Socket::bind_to(const IPv6Address& ip_address)
     }
     std::cerr << "WinSock Socket IPv6 bind failed. Error-code: " << WSAGetLastError();
     return false;
+}
+
+void Socket::listen_requests(int backlog) {
+    if (listen(this->socket_handle, backlog) == SOCKET_ERROR)
+    {
+        std::cerr << "Socket Listening failed. Error-code: " << WSAGetLastError();
+    }
 }
 
 const std::vector<std::byte>& Socket::get_data() const
