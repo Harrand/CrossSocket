@@ -1,49 +1,34 @@
-#ifndef ADDRESS_HPP
-#define ADDRESS_HPP
+#ifndef CROSSSOCKET_ADDRESS_HPP
+#define CROSSSOCKET_ADDRESS_HPP
+#include <cstdint>
+#include <string>
 
-#ifdef _WIN32
-    #include <winsock2.h>
-    #include <wS2tcpip.h>
-    #include <windows.h>
-    #define AddressFamily short
-    #define Port unsigned short
-#elif __unix__ || __APPLE__ || __linux__
-    #include <sys/socket.h>
-    #include <unistd.h>
-    #define AddressFamily sa_family_t
-    #define Port in_port_t
-#else
-    static_assert(false, "Neither POSIX nor WinSock implementations could be identified.");
-#endif
-
-#define IP4 in_addr
-#define IP6 in6_addr
-
-class Address
+namespace xsock::address
 {
+    constexpr std::uint16_t default_port = 80;
+    constexpr char default_port_string[] = "80";
+}
+
+/*
+ * A port number is a 16-bit unsigned integer, thus ranging from 0 to 65535.
+ * decltype(16-bit unsigned integer) = uint16_t
+ */
+
+class Address // IP address (independent of IP version right now, basically a POD)
+{
+public:
+    Address(std::string address, std::uint16_t port);
+    Address(std::string address, std::string port);
+    Address(std::string address_with_port);
+    std::string get_full_address() const;
+    const std::string& get_address() const;
+    std::uint16_t get_port() const;
+    const std::string& get_port_string() const;
+    friend std::ostream& operator<<(std::ostream& str, const Address& address);
 protected:
-    Address(AddressFamily address_family, Port port);
-    AddressFamily address_family;
-    Port port;
-};
-
-class IPv4Address : public Address
-{
-public:
-    IPv4Address(IP4 address, Port port);
-    sockaddr_in operator()() const;
-private:
-    IP4 address;
-};
-
-class IPv6Address : public Address
-{
-public:
-    IPv6Address(IP6 address, Port port);
-    sockaddr_in6 operator()() const;
-private:
-    IP6 address;
+    std::string address;
+    std::string port;
 };
 
 
-#endif //ADDRESS_HPP
+#endif //CROSSSOCKET_ADDRESS_HPP

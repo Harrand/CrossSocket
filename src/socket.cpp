@@ -1,130 +1,96 @@
-#include "socket.hpp"
+//
+// Created by Harrand on 04/06/2018.
+//
+
 #include <iostream>
+#include "socket.hpp"
+Socket::Socket(Address address): address(address){}
 
-namespace xsock
+#ifdef _WIN32
+WindowsSocket::WindowsSocket(Address address, xsock::Protocol protocol): Socket(address), socket_info(), hints(), result(nullptr), protocol(protocol), other(nullptr)
 {
-    bool initialise()
+    using namespace xsock;
+    // haven't yet defined whether IPv4 or IPv6
+    socket_info.ai_family = AF_UNSPEC;
+    switch(this->protocol)
     {
-        if constexpr(xsock::type == SocketType::WINDOWS)
+        case Protocol::TCP:
+            socket_info.ai_socktype = SOCK_STREAM;
+            socket_info.ai_protocol = IPPROTO_TCP;
+            break;
+        case Protocol::UDP:
+            socket_info.ai_socktype = SOCK_DGRAM;
+            socket_info.ai_protocol = IPPROTO_UDP;
+            break;
+    }
+    // TODO: Error Handling
+    getaddrinfo(this->address.get_address().c_str(), this->address.get_port_string().c_str(), &this->hints, &this->result);
+}
+
+WindowsSocket::~WindowsSocket()
+{
+    closesocket(this->socket_handle);
+}
+
+bool WindowsSocket::valid() const
+{
+    return this->socket_handle != INVALID_SOCKET;
+}
+
+bool WindowsSocket::connect_socket(WindowsSocket& other)
+{
+    this->other = &other;
+    for(addrinfo* ptr = this->result; ptr != NULL; ptr = ptr->ai_next)
+    {
+        std::cout << "TEST\n";
+        this->socket_handle = socket(this->socket_info.ai_family, this->socket_info.ai_socktype, this->socket_info.ai_protocol);
+        if (!this->valid())
         {
-            // Using WinSock
-            std::cout << "Initialising CrossSocket via Windows (WinSock)...";
-            WSADATA api_info;
-            if(WSAStartup(MAKEWORD(2, 2), &api_info) != 0)
-            {
-                std::cerr << "Initialisation Failed. Error Code = " << WSAGetLastError();
-                return false;
-            }
-            std::cout << "Initialisation Successful.";
-            return true;
+            std::cerr << "Error: Windows Socket bind did not result in a valid socket:\n";
+            std::cerr << WSAGetLastError() << "\n";
+            return false;
         }
-        else
+        int result = connect(this->socket_handle, other.socket_info.ai_addr, static_cast<int>(other.socket_info.ai_addrlen));
+        if(result == SOCKET_ERROR)
         {
-            // Using POSIX Socket; anything else will have already failed a static assertation.
-            // In addition, POSIX Socket API requires no such initialisation.
-            return true;
+            closesocket(this->socket_handle);
+            this->socket_handle = INVALID_SOCKET;
+            continue;
         }
-    }
-
-    void destroy()
-    {
-        if constexpr(xsock::type == SocketType::WINDOWS)
-        {
-            WSACleanup();
-            std::cout << "WinSock cleanup successful.";
-        }
-        else
-            std::cout << "POSIX cleanup successful.";
-    }
-}
-
-Socket::Socket(IPVersion ip_version, SocketProtocol protocol, SocketRole role): bound(false), role(role), data_buffer({}), ip_version(ip_version), protocol(protocol)
-{
-    auto ipv = (this->ip_version == IPVersion::IPV4) ? AF_INET : AF_INET6;
-    auto type = (this->protocol == SocketProtocol::TCP) ? SOCK_STREAM : SOCK_DGRAM;
-    if constexpr(xsock::type == SocketType::WINDOWS)
-    {
-        auto proto = (this->protocol == SocketProtocol::TCP) ? IPPROTO_TCP : IPPROTO_UDP;
-        this->socket_handle = socket(ipv, type, proto);
-        if(this->socket_handle == INVALID_SOCKET)
-            std::cout << "WinSock Socket creation failed. Error Code: " << WSAGetLastError();
-    }
-    else
-    {
-        protoent* protocol_entry = getprotobyname(this->protocol == SocketProtocol::TCP ? "tcp" : "udp");
-        this->socket_handle = socket(ipv, type, protocol_entry->p_proto);
-        if(this->socket_handle < 0)
-            std::cout << "POSIX Socket creation failed. No error-code is available.";
-    }
-}
-
-Socket::Socket(const Socket& copy): Socket(copy.ip_version, copy.protocol, copy.role) {}
-
-Socket::~Socket()
-{
-    #ifdef _WIN32
-        closesocket(this->socket_handle);
-    #else
-        close(this->socket_handle);
-    #endif
-}
-
-bool Socket::is_bound() const
-{
-    return this->bound;
-}
-
-const SocketRole& Socket::get_role() const
-{
-    return this->role;
-}
-
-bool Socket::bind_to(const IPv4Address& ip_address)
-{
-    sockaddr_in api_address = ip_address();
-    if(bind(this->socket_handle, reinterpret_cast<const sockaddr*>(&api_address), sizeof(api_address)) == 0)
-    {
-        this->bound = true;
         return true;
     }
-    std::cerr << "WinSock Socket IPv4 bind failed. Error-code: " << WSAGetLastError();
+    std::cerr << "Error: None of the addresses could be connected to.\n";
     return false;
 }
 
-bool Socket::bind_to(const IPv6Address& ip_address)
+bool WindowsSocket::send_bytes(const char* bytes) const
 {
-    sockaddr_in6 api_address = ip_address();
-    if(bind(this->socket_handle, reinterpret_cast<const struct sockaddr*>(&api_address), sizeof(api_address)) == 0)
+    return send(this->socket_handle, bytes, static_cast<int>(strlen(bytes)), 0) != SOCKET_ERROR;
+}
+
+std::optional<std::vector<char>> WindowsSocket::receive_bytes(int number_of_bytes)
+{
+    std::vector<char> receive_buffer;
+    receive_buffer.resize(static_cast<std::size_t>(number_of_bytes));
+    int result = recv(this->socket_handle, receive_buffer.data(), number_of_bytes, 0);
+    if(result >= 0)
+        return receive_buffer;
+    else if(result == SOCKET_ERROR)
     {
-        this->bound = true;
-        return true;
-    }
-    std::cerr << "WinSock Socket IPv6 bind failed. Error-code: " << WSAGetLastError();
-    return false;
+        std::cerr << "Error: Windows Socket receive method received an error:\n";
+        std::cerr << WSAGetLastError() << "\n";
+        return std::nullopt;
+    } else{std::cerr << "uh oh.\n";}
 }
 
-void Socket::listen_requests(int backlog) {
-    if (listen(this->socket_handle, backlog) == SOCKET_ERROR)
-    {
-        std::cerr << "Socket Listening failed. Error-code: " << WSAGetLastError();
-    }
-}
-
-const std::vector<std::byte>& Socket::get_data() const
+WindowsIPv4Socket::WindowsIPv4Socket(Address address, xsock::Protocol protocol): WindowsSocket(address, protocol)
 {
-    return this->data_buffer;
+    this->socket_info.ai_family = AF_INET;
 }
 
-std::string Socket::get_data_ascii() const
+WindowsIPv6Socket::WindowsIPv6Socket(Address address, xsock::Protocol protocol): WindowsSocket(address, protocol)
 {
-    std::string data = "";
-    data.reserve(this->get_data().size());
-    for(const std::byte& byte : this->get_data())
-        data += static_cast<char>(byte);
-    return data;
+    this->socket_info.ai_family = AF_INET6;
 }
 
-void Socket::clear_data()
-{
-    this->data_buffer.clear();
-}
+#endif
